@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UK 运营中心 · SSC 人事行政看板</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#1c2230;--bg4:#21262d;
+  --border:#30363d;--border2:#444c56;
+  --text:#e6edf3;--text2:#8b949e;--text3:#6e7681;
+  --teal:#00d4b8;--teal-dim:rgba(0,212,184,0.12);
+  --blue:#58a6ff;--blue-dim:rgba(88,166,255,0.12);
+  --purple:#bc8cff;--purple-dim:rgba(188,140,255,0.12);
+  --amber:#e3b341;--amber-dim:rgba(227,179,65,0.12);
+  --red:#f85149;--red-dim:rgba(248,81,73,0.12);
+  --green:#3fb950;--green-dim:rgba(63,185,80,0.12);
+  --radius:10px;--radius-lg:14px;
+}
+body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;min-height:100vh;font-size:13px}
+.grid-bg{position:fixed;inset:0;z-index:0;background-image:linear-gradient(rgba(0,212,184,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,184,.025) 1px,transparent 1px);background-size:48px 48px;pointer-events:none}
+
+/* LAYOUT */
+.shell{position:relative;z-index:1;max-width:1300px;margin:0 auto;padding:24px 20px 60px}
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:24px}
+.topbar-left h1{font-size:18px;font-weight:600;color:var(--text);letter-spacing:.01em}
+.topbar-left p{font-size:11px;color:var(--text3);margin-top:3px;font-family:'JetBrains Mono',monospace}
+.topbar-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* BUTTONS */
+.btn-group{display:flex;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.btn-group button{border:none;background:transparent;padding:7px 14px;font-size:12px;cursor:pointer;color:var(--text2);font-family:'Sora',sans-serif;transition:all .15s}
+.btn-group button.active{background:var(--teal-dim);color:var(--teal);font-weight:500}
+.btn-group button:hover:not(.active){background:var(--bg3);color:var(--text)}
+.icon-btn{display:flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;cursor:pointer;font-size:12px;color:var(--text2);font-family:'Sora',sans-serif;transition:all .15s;white-space:nowrap}
+.icon-btn:hover{background:var(--bg3);color:var(--text);border-color:var(--border2)}
+.icon-btn svg{width:13px;height:13px;flex-shrink:0}
+#spin{transition:transform .5s}
+
+/* LOADING */
+#loading{position:fixed;inset:0;z-index:999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+.loader{width:36px;height:36px;border:2px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading p{color:var(--text2);font-size:13px;font-family:'JetBrains Mono',monospace}
+#loading.hidden{display:none}
+
+/* METRICS */
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px}
+.mc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;cursor:default;transition:border-color .15s;position:relative;overflow:hidden}
+.mc:hover{border-color:var(--border2)}
+.mc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.mc.c-teal::before{background:var(--teal)}.mc.c-blue::before{background:var(--blue)}
+.mc.c-purple::before{background:var(--purple)}.mc.c-amber::before{background:var(--amber)}
+.mc.c-red::before{background:var(--red)}.mc.c-green::before{background:var(--green)}
+.mc-label{font-size:11px;color:var(--text3);margin-bottom:8px;letter-spacing:.03em}
+.mc-val{font-size:28px;font-weight:600;line-height:1;font-family:'JetBrains Mono',monospace;color:var(--text)}
+.mc.c-teal .mc-val{color:var(--teal)}.mc.c-blue .mc-val{color:var(--blue)}
+.mc.c-purple .mc-val{color:var(--purple)}.mc.c-amber .mc-val{color:var(--amber)}
+.mc.c-red .mc-val{color:var(--red)}.mc.c-green .mc-val{color:var(--green)}
+.mc-sub{font-size:11px;color:var(--text3);margin-top:5px}
+.mc-sub.up{color:var(--green)}.mc-sub.warn{color:var(--amber)}.mc-sub.danger{color:var(--red)}.mc-sub.info{color:var(--blue)}
+
+/* CHARTS ROW */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.chart-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px}
+.chart-card.full{grid-column:1/-1}
+.card-head{margin-bottom:14px}
+.card-title{font-size:13px;font-weight:500;color:var(--text)}
+.card-sub{font-size:11px;color:var(--text3);margin-top:3px}
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin:10px 0;font-size:11px;color:var(--text2)}
+.legend span{display:flex;align-items:center;gap:5px}
+.legend i{width:8px;height:8px;border-radius:2px;display:inline-block}
+
+/* BOTTOM PANELS */
+.panels-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px}
+.panel.full{grid-column:1/-1}
+.panel-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.sel{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:5px 10px;font-size:12px;color:var(--text2);font-family:'Sora',sans-serif;cursor:pointer;outline:none}
+.sel:focus{border-color:var(--teal)}
+
+/* TABLES */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+th{text-align:left;color:var(--text3);font-weight:500;padding:7px 10px;border-bottom:1px solid var(--border);font-size:11px;letter-spacing:.03em;white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--border);color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--bg3);color:var(--text)}
+
+/* BADGES */
+.badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:10px;font-weight:500;white-space:nowrap}
+.b-green{background:var(--green-dim);color:var(--green)}
+.b-amber{background:var(--amber-dim);color:var(--amber)}
+.b-red{background:var(--red-dim);color:var(--red)}
+.b-blue{background:var(--blue-dim);color:var(--blue)}
+.b-purple{background:var(--purple-dim);color:var(--purple)}
+.b-teal{background:var(--teal-dim);color:var(--teal)}
+.b-gray{background:var(--bg3);color:var(--text3)}
+
+/* QUICK ACTIONS */
+.qa-row{display:flex;gap:8px;flex-wrap:wrap;padding-top:8px}
+.qa{display:flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;cursor:pointer;font-size:12px;color:var(--text2);font-family:'Sora',sans-serif;transition:all .15s}
+.qa:hover{background:var(--bg3);color:var(--text);border-color:var(--border2)}
+.qa svg{width:13px;height:13px;flex-shrink:0}
+
+/* ALERT BANNER */
+.alert-bar{display:flex;align-items:center;gap:10px;background:var(--amber-dim);border:1px solid rgba(227,179,65,.3);border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;font-size:12px;color:var(--amber)}
+.alert-bar svg{flex-shrink:0;width:14px;height:14px}
+.alert-bar.hidden{display:none}
+
+/* TODAY EVENTS */
+.event-pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.epill{display:flex;align-items:center;gap:7px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:7px 12px;font-size:12px;color:var(--text2)}
+.epill strong{color:var(--text)}
+
+/* RESPONSIVE */
+@media(max-width:700px){
+  .charts-row,.panels-row{grid-template-columns:1fr}
+  .chart-card.full,.panel.full{grid-column:1}
+  .metrics{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+
+<!-- Loading -->
+<div id="loading">
+  <div class="loader"></div>
+  <p id="load-msg">正在读取花名册...</p>
+</div>
+
+<div class="shell" id="app" style="display:none">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <h1>UK 运营中心 · SSC 人事行政看板</h1>
+      <p id="ts">--</p>
+    </div>
+    <div class="topbar-right">
+      <div class="btn-group">
+        <button class="active" onclick="setRange(this,'today')">今日</button>
+        <button onclick="setRange(this,'week')">本周</button>
+        <button onclick="setRange(this,'month')">本月</button>
+      </div>
+      <button class="icon-btn" onclick="loadAll()">
+        <svg id="spin" viewBox="0 0 16 16" fill="none"><path d="M13.5 8A5.5 5.5 0 1 1 8 2.5c1.8 0 3.4.86 4.4 2.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M12 1v4h-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        刷新数据
+      </button>
+    </div>
+  </div>
+
+  <!-- ALERT -->
+  <div class="alert-bar hidden" id="alert-bar">
+    <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="11" r=".8" fill="currentColor"/></svg>
+    <span id="alert-text"></span>
+  </div>
+
+  <!-- METRICS -->
+  <div class="metrics" id="metrics"></div>
+
+  <!-- TODAY EVENTS -->
+  <div class="panel full" style="margin-bottom:14px" id="today-panel">
+    <div class="panel-head">
+      <div class="card-head"><div class="card-title">今日人员动态</div><div class="card-sub">入职 · 离职 · 转正 · 生日 · 周年</div></div>
+    </div>
+    <div class="event-pills" id="event-pills"><span style="color:var(--text3);font-size:12px">加载中...</span></div>
+  </div>
+
+  <!-- CHARTS -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="card-head"><div class="card-title">近 30 天出勤概况</div><div class="card-sub">OFFICE vs WFH vs 假期</div></div>
+      <div class="legend">
+        <span><i style="background:#58a6ff"></i>OFFICE</span>
+        <span><i style="background:#00d4b8"></i>WFH</span>
+        <span><i style="background:#e3b341"></i>AL/病假</span>
+      </div>
+      <div style="position:relative;height:220px"><canvas id="c-attend"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="card-head"><div class="card-title">异常考勤记录</div><div class="card-sub">近 30 天累计</div></div>
+      <div class="legend"><span><i style="background:#f85149"></i>异常数</span></div>
+      <div style="position:relative;height:220px"><canvas id="c-anomaly"></canvas></div>
+    </div>
+    <div class="chart-card full">
+      <div class="card-head"><div class="card-title">各部门在职人数分布</div><div class="card-sub">当前花名册</div></div>
+      <div style="position:relative;height:200px"><canvas id="c-dept"></canvas></div>
+    </div>
+  </div>
+
+  <!-- BOTTOM PANELS -->
+  <div class="panels-row">
+    <div class="panel">
+      <div class="panel-head">
+        <div class="card-head"><div class="card-title">试用期到期预警</div><div class="card-sub">基于生效日期 +6 个月估算</div></div>
+        <select class="sel" id="prob-filter" onchange="renderProbTable()">
+          <option value="all">全部</option>
+          <option value="7">≤7 天</option>
+          <option value="14">≤14 天</option>
+          <option value="30">≤30 天</option>
+        </select>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th style="width:22%">花名</th>
+            <th style="width:28%">部门</th>
+            <th style="width:28%">预计到期</th>
+            <th style="width:22%">状态</th>
+          </tr></thead>
+          <tbody id="prob-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="card-head"><div class="card-title">招聘进度跟进</div><div class="card-sub">UK运营中心</div></div>
+        <select class="sel" id="recr-filter" onchange="renderRecruitTable()">
+          <option value="all">全部结果</option>
+          <option value="通过">面试通过</option>
+          <option value="不通过">未通过</option>
+          <option value="接受">已接受 offer</option>
+          <option value="待">待入职</option>
+        </select>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th style="width:28%">候选人</th>
+            <th style="width:28%">应聘岗位</th>
+            <th style="width:24%">面试日期</th>
+            <th style="width:20%">结果</th>
+          </tr></thead>
+          <tbody id="recr-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel full">
+      <div class="panel-head">
+        <div class="card-head"><div class="card-title">考勤明细</div><div class="card-sub">正常考勤流水</div></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input id="attend-search" type="text" placeholder="搜索花名..." style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:5px 10px;font-size:12px;color:var(--text);font-family:'Sora',sans-serif;outline:none;width:130px" oninput="renderAttendTable()">
+          <select class="sel" id="attend-filter" onchange="renderAttendTable()">
+            <option value="all">全部地点</option>
+            <option value="OFFICE">OFFICE</option>
+            <option value="WFH">WFH</option>
+          </select>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th style="width:18%">日期</th>
+            <th style="width:18%">花名</th>
+            <th style="width:16%">上班</th>
+            <th style="width:16%">下班</th>
+            <th style="width:16%">地点</th>
+            <th style="width:16%">备注</th>
+          </tr></thead>
+          <tbody id="attend-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANOMALY PANEL -->
+  <div class="panels-row">
+    <div class="panel full">
+      <div class="panel-head">
+        <div class="card-head"><div class="card-title">异常考勤明细</div><div class="card-sub">需跟进处理</div></div>
+        <select class="sel" id="anomaly-filter" onchange="renderAnomalyTable()">
+          <option value="all">全部类型</option>
+        </select>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th style="width:20%">日期</th>
+            <th style="width:20%">花名</th>
+            <th style="width:25%">异常类型</th>
+            <th style="width:35%">说明</th>
+          </tr></thead>
+          <tbody id="anomaly-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUICK ACTIONS -->
+  <div class="qa-row">
+    <button class="qa" onclick="sendPrompt('帮我根据今天的数据生成SSC日报草稿')">
+      <svg viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="10" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M5 6h6M5 9h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      生成今日日报 ↗
+    </button>
+    <button class="qa" onclick="sendPrompt('花名册中有哪些员工处于试用期即将到期？帮我整理需要跟进转正的名单')">
+      <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M8 5v3.5l2 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      试用期转正跟进 ↗
+    </button>
+    <button class="qa" onclick="sendPrompt('帮我整理本周人员异动和考勤情况，输出一份周报摘要')">
+      <svg viewBox="0 0 16 16" fill="none"><path d="M3 4h10M3 8h7M3 12h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      生成周报摘要 ↗
+    </button>
+    <button class="qa" onclick="sendPrompt('当前有哪些招聘在进行中？帮我汇总UK运营中心招聘进度状态')">
+      <svg viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.2"/><path d="M10.5 10.5l2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      招聘进度汇总 ↗
+    </button>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG ─────────────────────────────────────────────────────────
+const SHEETS = {
+  roster:   { id:'1gXinUm9f7IrQttQcwEEG6fsBxjpBgkQ1LmsCLyzq01I', sheet:'在职员工花名册', headerRow:3 },
+  attend:   { id:'1HkRGrkq2Dg-rXv_dJ1eqeuLc0OJd0hj9qnMM15k3eQo', sheet:'正常考勤' },
+  anomaly:  { id:'1HkRGrkq2Dg-rXv_dJ1eqeuLc0OJd0hj9qnMM15k3eQo', sheet:'异常考勤' },
+  recruit:  { id:'1U0GSPSdm5bwk07uwbL2g9DO2n4CWg-Cq-nGEjbJ3B4k', sheet:'UK运营中心' },
+  birthday: { id:'1EFYFbEzSO_IvX0HgpPhYL8AJ3MRMA3LbAgrsARD8Dyk', sheet:'Sheet1' },
+};
+
+// ─── STATE ──────────────────────────────────────────────────────────
+let DATA = { roster:[], attend:[], anomaly:[], recruit:[], birthday:[] };
+let charts = {};
+let currentRange = 'today';
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+
+// ─── FETCH HELPER ───────────────────────────────────────────────────
+function sheetURL(cfg, range='') {
+  let url = `https://docs.google.com/spreadsheets/d/${cfg.id}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(cfg.sheet)}`;
+  const r = range || cfg.range || '';
+  if(r) url += `&range=${r}`;
+  return url;
+}
+
+async function fetchSheet(cfg) {
+  const url = sheetURL(cfg);
+  const resp = await fetch(url);
+  if(!resp.ok) throw new Error('HTTP ' + resp.status + ' for ' + cfg.sheet);
+  const text = await resp.text();
+  const match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/);
+  if(!match) throw new Error('No gviz response for sheet: ' + cfg.sheet + '. Check sharing permissions.');
+  const json = JSON.parse(match[1]);
+  if(!json.table) throw new Error('No table data for: ' + cfg.sheet);
+  const cols = json.table.cols.map(c => c.label).filter(l => l && l.trim());
+  const allCols = json.table.cols.map(c => c.label);
+  const rows = (json.table.rows || []).map(r =>
+    Object.fromEntries(allCols.map((c,i) => [c, r.c[i]?.v ?? r.c[i]?.f ?? '']))
+  ).filter(r => Object.values(r).some(v => v !== ''));
+  return rows;
+}
+
+// ─── LOAD ALL ───────────────────────────────────────────────────────
+async function loadAll() {
+  document.getElementById('loading').classList.remove('hidden');
+  document.getElementById('app').style.display = 'none';
+  const spin = document.getElementById('spin');
+  spin.style.transform='rotate(360deg)'; spin.style.transition='transform .6s';
+  setTimeout(()=>{spin.style.transform=''; spin.style.transition=''},700);
+
+  try {
+    setMsg('正在读取花名册...');
+    DATA.roster = await fetchSheet(SHEETS.roster);
+
+    setMsg('正在读取考勤数据...');
+    DATA.attend = await fetchSheet(SHEETS.attend);
+
+    setMsg('正在读取异常考勤...');
+    DATA.anomaly = await fetchSheet(SHEETS.anomaly);
+
+    setMsg('正在读取招聘进度...');
+    DATA.recruit = await fetchSheet(SHEETS.recruit);
+
+    setMsg('正在读取生日/周年...');
+    try { DATA.birthday = await fetchSheet(SHEETS.birthday); } catch(e){ DATA.birthday=[]; }
+
+    setMsg('渲染中...');
+    render();
+
+    document.getElementById('ts').textContent =
+      '数据更新时间：' + new Date().toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+  } catch(e) {
+    setMsg('读取失败：' + e.message + ' — 请确认表格已设为"任何人可查看"');
+    console.error(e);
+    setTimeout(()=>{
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('app').style.display='block';
+    },3000);
+    return;
+  }
+
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('app').style.display='block';
+}
+
+function setMsg(m){ document.getElementById('load-msg').textContent = m; }
+
+// ─── MAIN RENDER ────────────────────────────────────────────────────
+function render() {
+  renderMetrics();
+  renderTodayEvents();
+  renderCharts();
+  renderProbTable();
+  renderRecruitTable();
+  renderAttendTable();
+  renderAnomalyTable();
+  renderAlerts();
+}
+
+// ─── METRICS ────────────────────────────────────────────────────────
+function renderMetrics() {
+  const roster = DATA.roster.filter(r => r['花名*'] || r['花名']);
+  const total = roster.length;
+
+  const todayStr = fmtDate(TODAY);
+  const attendToday = DATA.attend.filter(r => normDate(r['日期']) === todayStr);
+  const officeToday = attendToday.filter(r => (r['地点']||'').includes('OFFICE')).length;
+  const wfhToday = attendToday.filter(r => (r['地点']||'').toUpperCase().includes('WFH')).length;
+  const anomalyToday = DATA.anomaly.filter(r => normDate(r['日期']) === todayStr).length;
+  const attnRate = attendToday.length > 0 ? Math.round(attendToday.length / total * 100) : '--';
+
+  // trial期
+  const trialSoon = getTrialSoon(30).length;
+
+  // 招聘中
+  const inProgress = DATA.recruit.filter(r => {
+    const result = r['面试结果']||'';
+    const offer = r['offer沟通结果']||'';
+    return !result || result==='' || offer==='待入职';
+  }).length;
+
+  const mcs = [
+    {label:'在职总人数',val:total,sub:'花名册在职',cls:'teal',color:'c-teal'},
+    {label:'今日打卡',val:attendToday.length,sub:`OFFICE ${officeToday} · WFH ${wfhToday}`,cls:'blue',color:'c-blue'},
+    {label:'出勤率',val:typeof attnRate==='number'?attnRate+'%':attnRate,sub:'今日',cls:'green',color:'c-green'},
+    {label:'考勤异常',val:anomalyToday,sub:'今日新增',cls:anomalyToday>0?'warn':'neutral',color:'c-amber'},
+    {label:'试用期预警',val:trialSoon,sub:'30天内到期',cls:trialSoon>0?'warn':'neutral',color:'c-purple'},
+    {label:'招聘进行中',val:inProgress,sub:'待面试/待入职',cls:'info',color:'c-blue'},
+  ];
+
+  document.getElementById('metrics').innerHTML = mcs.map(m=>
+    `<div class="mc ${m.color}">
+      <div class="mc-label">${m.label}</div>
+      <div class="mc-val">${m.val}</div>
+      <div class="mc-sub ${m.cls}">${m.sub}</div>
+    </div>`
+  ).join('');
+}
+
+// ─── TODAY EVENTS ───────────────────────────────────────────────────
+function renderTodayEvents() {
+  const pills = [];
+  const todayStr = fmtDate(TODAY);
+  const todayMM = String(TODAY.getMonth()+1).padStart(2,'0');
+  const todayDD = String(TODAY.getDate()).padStart(2,'0');
+  const mmdd = todayMM + '月';
+
+  // Birthdays from birthday sheet
+  DATA.birthday.forEach(r => {
+    const vals = Object.values(r);
+    // look for birthday month match
+    vals.forEach((v,i) => {
+      if(String(v).includes(mmdd) && String(v).includes(todayDD+'日')) {
+        const name = vals[0]||vals[1]||'未知';
+        pills.push(`<div class="epill"><span class="badge b-purple">生日</span><strong>${name}</strong>今日生日 🎂</div>`);
+      }
+    });
+  });
+
+  // Roster birthday month
+  DATA.roster.forEach(r => {
+    const bm = r['生日月份']||'';
+    const name = r['花名*']||r['花名']||'';
+    if(bm && String(bm).includes(todayMM+'月') && name) {
+      pills.push(`<div class="epill"><span class="badge b-purple">生日月</span><strong>${name}</strong>本月生日</div>`);
+    }
+  });
+
+  // Recent joins (within 7 days)
+  DATA.roster.forEach(r => {
+    const d = parseDate(r['生效日期（入）']||r['生效日期']||'');
+    const name = r['花名*']||r['花名']||'';
+    if(d && name) {
+      const diff = Math.round((TODAY - d)/86400000);
+      if(diff>=0 && diff<=7) pills.push(`<div class="epill"><span class="badge b-teal">入职</span><strong>${name}</strong>近期入职 (${fmtDate(d)})</div>`);
+    }
+  });
+
+  // Anomaly today
+  const anoToday = DATA.anomaly.filter(r => normDate(r['日期'])===fmtDate(TODAY));
+  anoToday.forEach(r => {
+    const name = r['花名']||'';
+    const type = r['异常类型']||'考勤异常';
+    if(name) pills.push(`<div class="epill"><span class="badge b-red">异常</span><strong>${name}</strong>${type}</div>`);
+  });
+
+  if(pills.length===0) pills.push('<span style="color:var(--text3);font-size:12px">今日暂无特殊动态</span>');
+
+  // deduplicate
+  const seen = new Set();
+  const unique = pills.filter(p => { if(seen.has(p)) return false; seen.add(p); return true; });
+  document.getElementById('event-pills').innerHTML = unique.slice(0,12).join('');
+}
+
+// ─── ALERTS ─────────────────────────────────────────────────────────
+function renderAlerts() {
+  const trial = getTrialSoon(7);
+  const bar = document.getElementById('alert-bar');
+  if(trial.length>0) {
+    bar.classList.remove('hidden');
+    document.getElementById('alert-text').textContent =
+      `⚠ 有 ${trial.length} 名员工试用期将在 7 天内到期，需跟进转正：${trial.map(r=>r['花名*']||r['花名']).join('、')}`;
+  } else {
+    bar.classList.add('hidden');
+  }
+}
+
+// ─── CHARTS ─────────────────────────────────────────────────────────
+function renderCharts() {
+  const gc = '#30363d'; const tc = '#6e7681';
+  const base = {responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false}},
+    scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:10}}},
+            y:{grid:{color:gc},ticks:{color:tc,font:{size:10}},beginAtZero:true}}
+  };
+
+  // Last 30 days attendance summary
+  const days30 = getLast30Days();
+  const officeByDay = days30.map(d => DATA.attend.filter(r=>normDate(r['日期'])===d&&(r['地点']||'').includes('OFFICE')).length);
+  const wfhByDay    = days30.map(d => DATA.attend.filter(r=>normDate(r['日期'])===d&&(r['地点']||'').toUpperCase().includes('WFH')).length);
+  const leaveByDay  = days30.map(d => DATA.attend.filter(r=>normDate(r['日期'])===d&&/AL|sick|假/i.test(r['备注']||'')).length);
+  const labels30 = days30.map(d=>d.slice(5));
+
+  destroyChart('c-attend');
+  charts['c-attend'] = new Chart(document.getElementById('c-attend'),{
+    type:'bar',
+    data:{labels:labels30,datasets:[
+      {label:'OFFICE',data:officeByDay,backgroundColor:'#58a6ff',borderRadius:2,stack:'a'},
+      {label:'WFH',data:wfhByDay,backgroundColor:'#00d4b8',borderRadius:2,stack:'a'},
+      {label:'假期',data:leaveByDay,backgroundColor:'#e3b341',borderRadius:2,stack:'a'},
+    ]},
+    options:{...base,scales:{x:{...base.scales.x,stacked:true,ticks:{...base.scales.x.ticks,maxRotation:45,autoSkip:true,maxTicksLimit:10}},y:{...base.scales.y,stacked:true}}}
+  });
+
+  // Anomaly chart
+  const anomalyByDay = days30.map(d => DATA.anomaly.filter(r=>normDate(r['日期'])===d).length);
+  destroyChart('c-anomaly');
+  charts['c-anomaly'] = new Chart(document.getElementById('c-anomaly'),{
+    type:'line',
+    data:{labels:labels30,datasets:[{
+      label:'异常',data:anomalyByDay,borderColor:'#f85149',
+      backgroundColor:'rgba(248,81,73,.1)',tension:.4,fill:true,
+      pointBackgroundColor:'#f85149',pointRadius:2,pointHoverRadius:4
+    }]},
+    options:{...base,scales:{x:{...base.scales.x,ticks:{...base.scales.x.ticks,maxRotation:45,autoSkip:true,maxTicksLimit:10}},y:{...base.scales.y}}}
+  });
+
+  // Dept distribution
+  const deptMap = {};
+  DATA.roster.forEach(r=>{
+    const dept = r['部门']||'其他';
+    if(dept) deptMap[dept]=(deptMap[dept]||0)+1;
+  });
+  const depts = Object.entries(deptMap).sort((a,b)=>b[1]-a[1]);
+  const dColors = ['#58a6ff','#00d4b8','#bc8cff','#f85149','#e3b341','#3fb950','#d2a8ff','#ffa657','#79c0ff'];
+
+  destroyChart('c-dept');
+  charts['c-dept'] = new Chart(document.getElementById('c-dept'),{
+    type:'bar',
+    data:{labels:depts.map(d=>d[0]),datasets:[{
+      label:'人数',data:depts.map(d=>d[1]),
+      backgroundColor:depts.map((_,i)=>dColors[i%dColors.length]),borderRadius:4
+    }]},
+    options:{...base,indexAxis:'y',
+      scales:{x:{...base.scales.x},
+              y:{...base.scales.y,ticks:{color:tc,font:{size:11}}}}}
+  });
+}
+
+function destroyChart(id) {
+  if(charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+// ─── TRIAL TABLE ────────────────────────────────────────────────────
+function getTrialSoon(days) {
+  return DATA.roster.filter(r=>{
+    const status = r['在职状态*']||r['在职状态']||'';
+    if(!status.includes('试用')) return false;
+    const start = parseDate(r['生效日期（入）']||r['生效日期']||'');
+    if(!start) return false;
+    const due = new Date(start); due.setMonth(due.getMonth()+6);
+    const diff = Math.round((due-TODAY)/86400000);
+    return diff>=0 && diff<=days;
+  });
+}
+
+function renderProbTable() {
+  const days = document.getElementById('prob-filter').value;
+  const limit = days==='all' ? 9999 : parseInt(days);
+  const list = getTrialSoon(limit);
+  const body = document.getElementById('prob-body');
+  if(list.length===0){ body.innerHTML=`<tr><td colspan="4" style="color:var(--text3);text-align:center;padding:16px">暂无预警记录</td></tr>`; return; }
+  body.innerHTML = list.map(r=>{
+    const name = r['花名*']||r['花名']||'-';
+    const dept = r['部门']||'-';
+    const start = parseDate(r['生效日期（入）']||r['生效日期']||'');
+    const due = start ? new Date(start.getTime()+6*30*86400000) : null;
+    const dueStr = due ? fmtDate(due) : '-';
+    const diff = due ? Math.round((due-TODAY)/86400000) : 999;
+    const badge = diff<=7 ? `<span class="badge b-red">紧急 ${diff}天</span>` :
+                  diff<=14 ? `<span class="badge b-amber">关注 ${diff}天</span>` :
+                  `<span class="badge b-blue">${diff}天后</span>`;
+    return `<tr><td>${name}</td><td>${dept}</td><td>${dueStr}</td><td>${badge}</td></tr>`;
+  }).join('');
+}
+
+// ─── RECRUIT TABLE ──────────────────────────────────────────────────
+function renderRecruitTable() {
+  const filter = document.getElementById('recr-filter').value;
+  let list = DATA.recruit.filter(r=>r['候选人/简历名']||r['候选人']);
+  if(filter!=='all') list = list.filter(r=>{
+    const result = r['面试结果']||''; const offer = r['offer沟通结果']||''; const join = r['最终是否入职']||'';
+    if(filter==='待') return offer==='待入职'||join==='待入职';
+    return result.includes(filter)||offer.includes(filter)||join.includes(filter);
+  });
+  // show latest 20
+  list = list.slice(-20).reverse();
+  const body = document.getElementById('recr-body');
+  if(list.length===0){ body.innerHTML=`<tr><td colspan="4" style="color:var(--text3);text-align:center;padding:16px">暂无数据</td></tr>`; return; }
+  body.innerHTML = list.map(r=>{
+    const name = r['候选人/简历名']||r['候选人']||'-';
+    const pos  = r['应聘岗位']||'-';
+    const date = r['面试日期']||'-';
+    const res  = r['面试结果']||'';
+    const offer= r['offer沟通结果']||'';
+    const join = r['最终是否入职']||'';
+    let badge;
+    if(join==='是'||res.includes('入职')) badge=`<span class="badge b-teal">已入职</span>`;
+    else if(offer==='接受'||offer==='待入职') badge=`<span class="badge b-blue">待入职</span>`;
+    else if(res.includes('通过')&&!res.includes('不')) badge=`<span class="badge b-green">通过</span>`;
+    else if(res.includes('不通过')) badge=`<span class="badge b-red">未通过</span>`;
+    else badge=`<span class="badge b-gray">进行中</span>`;
+    return `<tr><td>${name}</td><td>${pos}</td><td>${date}</td><td>${badge}</td></tr>`;
+  }).join('');
+}
+
+// ─── ATTEND TABLE ───────────────────────────────────────────────────
+function renderAttendTable() {
+  const search = (document.getElementById('attend-search').value||'').trim().toLowerCase();
+  const filter = document.getElementById('attend-filter').value;
+  let list = [...DATA.attend].reverse();
+  if(filter!=='all') list=list.filter(r=>(r['地点']||'').toUpperCase().includes(filter.toUpperCase()));
+  if(search) list=list.filter(r=>(r['花名']||'').toLowerCase().includes(search));
+  list=list.slice(0,50);
+  const body = document.getElementById('attend-body');
+  if(list.length===0){ body.innerHTML=`<tr><td colspan="6" style="color:var(--text3);text-align:center;padding:16px">暂无记录</td></tr>`; return; }
+  body.innerHTML = list.map(r=>{
+    const loc = r['地点']||'';
+    const locBadge = loc.includes('OFFICE') ? `<span class="badge b-blue">OFFICE</span>` :
+                     loc.toUpperCase().includes('WFH') ? `<span class="badge b-teal">WFH</span>` :
+                     loc ? `<span class="badge b-gray">${loc}</span>` : '';
+    return `<tr><td>${r['日期']||'-'}</td><td>${r['花名']||'-'}</td><td>${r['上班']||'-'}</td><td>${r['下班']||'-'}</td><td>${locBadge}</td><td>${r['备注']||'-'}</td></tr>`;
+  }).join('');
+}
+
+// ─── ANOMALY TABLE ──────────────────────────────────────────────────
+function renderAnomalyTable() {
+  // populate filter options
+  const types = [...new Set(DATA.anomaly.map(r=>r['异常类型']||'').filter(Boolean))];
+  const sel = document.getElementById('anomaly-filter');
+  const current = sel.value;
+  sel.innerHTML = '<option value="all">全部类型</option>' + types.map(t=>`<option value="${t}" ${t===current?'selected':''}>${t}</option>`).join('');
+
+  const filter = sel.value;
+  let list = [...DATA.anomaly].reverse();
+  if(filter!=='all') list=list.filter(r=>(r['异常类型']||'')===filter);
+  list=list.slice(0,50);
+  const body = document.getElementById('anomaly-body');
+  if(list.length===0){ body.innerHTML=`<tr><td colspan="4" style="color:var(--text3);text-align:center;padding:16px">暂无异常记录 ✓</td></tr>`; return; }
+  body.innerHTML = list.map(r=>{
+    const type = r['异常类型']||'-';
+    const badge = type!=='-' ? `<span class="badge b-red">${type}</span>` : '-';
+    return `<tr><td>${r['日期']||'-'}</td><td>${r['花名']||'-'}</td><td>${badge}</td><td>${r['说明']||'-'}</td></tr>`;
+  }).join('');
+}
+
+// ─── HELPERS ────────────────────────────────────────────────────────
+function setRange(el,r){
+  document.querySelectorAll('.btn-group button').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active'); currentRange=r;
+}
+
+function fmtDate(d){ if(!d) return ''; return d.toISOString().slice(0,10); }
+
+function normDate(v) {
+  if(!v) return '';
+  if(v instanceof Date) return fmtDate(v);
+  const s = String(v);
+  // handles "2026-04-01", "2026/4/1", "Date(2026,3,1)"
+  const m1 = s.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if(m1) return `${m1[1]}-${m1[2].padStart(2,'0')}-${m1[3].padStart(2,'0')}`;
+  const m2 = s.match(/Date\((\d+),(\d+),(\d+)\)/);
+  if(m2) return `${m2[1]}-${String(parseInt(m2[2])+1).padStart(2,'0')}-${m2[3].padStart(2,'0')}`;
+  return s;
+}
+
+function parseDate(v) {
+  const s = normDate(v);
+  if(!s) return null;
+  const d = new Date(s); return isNaN(d)?null:d;
+}
+
+function getLast30Days() {
+  const days=[];
+  for(let i=29;i>=0;i--){ const d=new Date(TODAY); d.setDate(d.getDate()-i); days.push(fmtDate(d)); }
+  return days;
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────
+loadAll();
+</script>
+</body>
+</html>
